@@ -25,6 +25,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: .
+        context: ./producer
+        file: ./producer/Dockerfile
         push: true
         tags: tsts83/test-news-feed-kafka:latest
