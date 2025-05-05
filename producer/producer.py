@@ -46,7 +46,7 @@ print("🚀 Starting Kafka producer...")
 producer = Producer({'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS})
 
 def get_news():
-    url = f"https://newsdata.io/api/1/news?apikey={API_KEY}&country=us&language=en&category=top"
+    url = f"https://newsdata.io/api/1/news?apikey={API_KEY}&language=en&q=Economy%20AND%20World%20News"
     print(f"🌐 Fetching news from API: {url}")
     try:
         response = requests.get(url)
@@ -76,6 +76,8 @@ while True:
                 "title": article.get("title"),
                 "link": article.get("link"),
                 "pubDate": article.get("pubDate")
+                "description": article.get("description"),
+                "image_url": article.get("image_url")
             })
             print(f"➡️ Sending article {idx+1}/{len(headlines)}: {article.get('title')}")
             producer.produce(TOPIC, payload.encode('utf-8'), callback=delivery_report)
