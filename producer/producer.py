@@ -75,7 +75,7 @@ while True:
             payload = json.dumps({
                 "title": article.get("title"),
                 "link": article.get("link"),
-                "pubDate": article.get("pubDate")
+                "pubDate": article.get("pubDate"),
                 "description": article.get("description"),
                 "image_url": article.get("image_url")
             })
