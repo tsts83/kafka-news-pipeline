@@ -1,9 +1,13 @@
 📨 News to Kafka Feeder
-A simple Python demo that fetches real-time news from NewsData.io and publishes each article to a Kafka topic. Useful for testing Kafka-based pipelines with live data.
+A simple Python demo that fetches real-time news from NewsData.io and publishes each article to a Kafka topic. Perfect for testing Kafka-based pipelines with live, realistic data.
 
 🔧 Features
-Fetches news using the NewsData.io API
+Fetches current news via the NewsData.io API
 
-Publishes headlines and metadata to a Kafka topic
+Publishes each article to a Kafka topic in JSON format
 
-Configurable via environment variables
+Runs in Docker using docker ```compose up --build```
+
+Connects to Kafka via the default ```localhost:9092``` port
+
+Easily configurable with environment variables
