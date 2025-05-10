@@ -6,7 +6,7 @@ Fetches current news via the NewsData.io API
 
 Publishes each article to a Kafka topic in JSON format
 
-Runs in Docker using docker ```compose up --build```
+Runs in Docker using ```docker compose up --build```
 
 Connects to Kafka via the default ```localhost:9092``` port
 
