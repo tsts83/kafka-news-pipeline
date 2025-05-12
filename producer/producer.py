@@ -3,9 +3,10 @@ from confluent_kafka import Producer
 import json
 import time
 import os
-from dotenv import load_dotenv
-from confluent_kafka.admin import AdminClient
 import sys
+import argparse
+from dotenv import load_dotenv
+
 sys.stdout.reconfigure(line_buffering=True)
 
 # Load environment variables
@@ -20,30 +21,14 @@ API_KEY = os.getenv("NEWSDATA_API_KEY")
 if not API_KEY:
     raise ValueError("API key not found. Did you set NEWSDATA_API_KEY in the .env file?")
 
-def wait_for_kafka_ready(bootstrap_servers, timeout=180):
-    print(f"⏳ Waiting for Kafka at {bootstrap_servers} to become ready...")
-    start_time = time.time()
-    admin_client = AdminClient({'bootstrap.servers': bootstrap_servers})
-    
-    while time.time() - start_time < timeout:
-        try:
-            cluster_metadata = admin_client.list_topics(timeout=5)
-            if cluster_metadata.topics:
-                print(f"✅ Kafka is ready! Found {len(cluster_metadata.topics)} topics.")
-                return
-        except Exception as e:
-            print(f"Kafka not ready yet: {e}")
-        time.sleep(2)
+# Kafka Producer setup (lazy init for lambda)
+producer = None
 
-    raise TimeoutError(f"Kafka not ready after {timeout} seconds")
-
-# Wait for Kafka to be ready
-# wait_for_kafka_ready(KAFKA_BOOTSTRAP_SERVERS)
-
-print("🚀 Starting Kafka producer...")
-
-# Set up Kafka producer
-producer = Producer({'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS})
+def init_producer():
+    global producer
+    if producer is None:
+        print(f"🚀 Initializing Kafka Producer to {KAFKA_BOOTSTRAP_SERVERS}")
+        producer = Producer({'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS})
 
 def get_news():
     url = f"https://newsdata.io/api/1/news?apikey={API_KEY}&language=en&q=Economy%20AND%20World%20News"
@@ -64,13 +49,12 @@ def delivery_report(err, msg):
     else:
         print(f"✅ Delivered message to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
 
-# Main loop to produce messages
-while True:
-    print("📡 Starting new fetch/produce cycle...")
+def produce_news():
+    init_producer()
+    print("📡 Starting fetch & produce cycle...")
     try:
-        print("➡️ Calling get_news()...")
         headlines = get_news()
-        print(f"✅ get_news() returned {len(headlines)} articles.")
+        print(f"✅ Fetched {len(headlines)} articles.")
         for idx, article in enumerate(headlines):
             payload = json.dumps({
                 "title": article.get("title"),
@@ -82,9 +66,28 @@ while True:
             print(f"➡️ Sending article {idx+1}/{len(headlines)}: {article.get('title')}")
             producer.produce(TOPIC, payload.encode('utf-8'), callback=delivery_report)
         producer.flush()
-        print("✅ Finished producing all articles.")
+        print("✅ All articles produced.")
     except Exception as e:
         print(f"⚠️ Error during production: {e}")
-    
-    print("⏲️ Sleeping for 60 seconds...\n")
-    time.sleep(60)  # Fetch news every 60 seconds
+
+# Lambda entrypoint
+def lambda_handler(event, context):
+    print("🟢 Lambda invocation received.")
+    produce_news()
+    return {"status": "success", "message": "News produced to Kafka"}
+
+# CLI entrypoint
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Kafka News Producer")
+    parser.add_argument('--mode', choices=['local', 'lambda'], default='local', help='Run mode: local or lambda')
+    args = parser.parse_args()
+
+    if args.mode == "local":
+        print("🔁 Running in LOCAL mode (infinite loop)")
+        while True:
+            produce_news()
+            print("⏲️ Sleeping for 60 seconds...\n")
+            time.sleep(60)
+    else:
+        print("⚡ Running in LAMBDA mode (single execution)")
+        lambda_handler({}, {})
